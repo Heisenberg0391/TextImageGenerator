@@ -19,6 +19,7 @@ config中设置相关参数并存放语料文件, dict5990.txt是字典, sentenc
 ![效果图2](/imageset/7.png)
 >
 ![效果图2](/imageset/9.png)
+>
 文件-类别序列映射表
 >
 ![效果图3](/mapping.png)
