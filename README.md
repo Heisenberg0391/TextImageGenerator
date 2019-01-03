@@ -1,4 +1,4 @@
-# ChineseTextGenerator
+# TextImageGenerator
 该脚本根据语料文件生成对应的图像文件，适用于文本识别等CV任务
 >
 根目录下的fonts文件夹用于存放ttf字体文件, imageset文件夹用于存放输出图像和映射表, 
