@@ -252,5 +252,5 @@ if __name__ == '__main__':
     img_w = 300
     img_h = 40
     # 实例化图像生成器
-    img_gen = TextGenerator(img_w=img_w, img_h=img_h, aug=False)
+    img_gen = TextGenerator(img_w=img_w, img_h=img_h, aug=False)  # aug参数控制是否使用数据增强
     img_gen.text_generator()
