@@ -5,21 +5,99 @@ import numpy as np
 import config.cfg as cfg
 import os
 from PIL import Image, ImageDraw, ImageFont
-import glob
+from scipy import ndimage
 import progressbar
 import tkinter as tk
 from tkinter import filedialog
+import cv2
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 plt.style.use("ggplot")
 
 
+def speckle(img):
+    severity = np.random.uniform(0, 0.6*255)
+    blur = ndimage.gaussian_filter(np.random.randn(*img.shape) * severity, 1)
+    img_speck = (img + blur)
+    img_speck[img_speck > 255] = 255
+    img_speck[img_speck <= 0] = 0
+    return img_speck
+
+
+def augmentation(img, ):
+    # 不能直接在原始image上改动
+    image = img.copy()
+    img_h, img_w = img.shape
+    mode = np.random.randint(0, 9)
+    '''添加随机模糊和噪声'''
+    # 高斯模糊
+    if mode == 0:
+        image = cv2.GaussianBlur(image,(5, 5), np.random.randint(1, 10))
+
+    # 模糊后二值化，虚化边缘
+    if mode == 1:
+        image = cv2.GaussianBlur(image, (9, 9), np.random.randint(1, 8))
+        ret, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        thresh = image.copy()
+        thresh[thresh >= th] = 0
+        thresh[thresh < th] = 255
+        image = thresh
+
+    # 横线干扰
+    if mode == 2:
+        for i in range(0, img_w, 2):
+            cv2.line(image, (0, i), (img_w, i), 0, 1)
+
+    # 竖线
+    if mode == 3:
+        for i in range(0, img_w, 2):
+            cv2.line(image, (i, 0), (i, img_h), 0, 1)
+
+    # 十字线
+    if mode == 4:
+        for i in range(0, img_h, 2):
+            cv2.line(image, (0, i), (img_w, i), 0, 1)
+        for i in range(0, img_w, 2):
+            cv2.line(image, (i, 0), (i, img_h), 0, 1)
+
+    # 左右运动模糊
+    if mode == 5:
+        kernel_size = 5
+        kernel_motion_blur = np.zeros((kernel_size, kernel_size))
+        kernel_motion_blur[int((kernel_size - 1) / 2), :] = np.ones(kernel_size)
+        kernel_motion_blur = kernel_motion_blur / kernel_size
+        image = cv2.filter2D(image, -1, kernel_motion_blur)
+
+    # 上下运动模糊
+    if mode == 6:
+        kernel_size = 9
+        kernel_motion_blur = np.zeros((kernel_size, kernel_size))
+        kernel_motion_blur[:, int((kernel_size - 1) / 2)] = np.ones(kernel_size)
+        kernel_motion_blur = kernel_motion_blur / kernel_size
+        image = cv2.filter2D(image, -1, kernel_motion_blur)
+
+    # 高斯噪声
+    if mode == 7:
+        row, col = [img_h, img_w]
+        mean = 0
+        sigma = 1
+        gauss = np.random.normal(mean, sigma, (row, col))
+        gauss = gauss.reshape(row, col)
+        noisy = image + gauss
+        image = noisy.astype(np.uint8)
+
+    # 污迹
+    if mode == 8:
+        image = speckle(image)
+    return image
+
+
 class TextGenerator():
-    def __init__(self, img_w, img_h):
+    def __init__(self, img_w, img_h, aug):
         """初始化参数来自config文件
         """
-        super(TextGenerator, self).__init__()
+        self.aug = aug
         self.img_w = img_w
         self.img_h = img_h
         self.img_lim = cfg.canvas_lim  # 图片最大宽度
@@ -42,15 +120,9 @@ class TextGenerator():
         """ 加载字体文件并设定字体大小
         """
         self.fonts = []
-        # 字体完整路径
-        # font_path = os.path.join(cfg.FONT_PATH, "*.ttf")
-        # 获取全部字体路径，存成list
-        fonts = list(glob.glob(font_path))
-        # 遍历字体文件
-        for each in fonts:
-            # 调整字体大小
-            font = ImageFont.truetype(each, int(self.img_h*factor), 0)
-            self.fonts.append(font)
+        # 加载字体文件
+        font = ImageFont.truetype(font_path, int(self.img_h*factor), 0)
+        self.fonts.append(font)
 
     def build_dict(self):
         """ 打开字典，加载全部字符到list
@@ -93,7 +165,7 @@ class TextGenerator():
                     sentence_list.append(sentence[0:max_row_len])
 
         if len(sentence_list) < self.num_rows:
-            raise IOError('Could not pull enough words corpus file.')
+            raise IOError('语料不够')
 
         for i, sentence in enumerate(sentence_list):
             # 遍历语料中的每一句(行)
@@ -142,12 +214,18 @@ class TextGenerator():
 
         # 绘制当前文本行
         draw.text((start_x, start_y), text, font=font, fill=(0, 0, 0, 255))
+        img_array = np.array(ndimg)
 
-        # 画图看一下
-        # img_array = np.array(ndimg)
-        # plt.figure(1)
-        # plt.imshow(img_array)
-        # plt.show()
+        # 转灰度图
+        grey_img = img_array[:, :, 0]  # [32, 256, 4]
+        if self.aug == True:
+            auged = augmentation(grey_img)
+            ndimg = Image.fromarray(auged).convert('RGBA')
+            # 画图看一下
+            # plt.figure(1)
+            # plt.imshow(auged)
+            # plt.show()
+
         save_path = os.path.join(cfg.OUTPUT_DIR, '{}.png'.format(i))  # 类别序列即文件名
         ndimg.save(save_path)
 
@@ -173,7 +251,6 @@ if __name__ == '__main__':
     # 参数
     img_w = 300
     img_h = 40
-
     # 实例化图像生成器
-    img_gen = TextGenerator(img_w=img_w, img_h=img_h)
+    img_gen = TextGenerator(img_w=img_w, img_h=img_h, aug=False)
     img_gen.text_generator()

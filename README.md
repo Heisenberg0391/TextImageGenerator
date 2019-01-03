@@ -6,12 +6,19 @@ config中设置相关参数并存放语料文件, dict5990.txt是字典, sentenc
 >
 运行sample_generator.py后会跳出对话框, 选择字体文件即可生成数据集
 >
-效果如下
+不进行数据增强的效果如下
 >
-![效果图1](/imageset/2.png)
+![效果图1](/imageset/0.png)
 >
 ![效果图2](/imageset/1.png)
 >
+数据增强后的效果如下:
+>
+![效果图1](/imageset/6.png)
+>
+![效果图2](/imageset/7.png)
+>
+![效果图2](/imageset/9.png)
 文件-类别序列映射表
 >
 ![效果图3](/mapping.png)
