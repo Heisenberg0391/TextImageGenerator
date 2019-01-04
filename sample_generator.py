@@ -10,10 +10,6 @@ import progressbar
 import tkinter as tk
 from tkinter import filedialog
 import cv2
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
-plt.style.use("ggplot")
 
 
 def speckle(img):
@@ -221,11 +217,8 @@ class TextGenerator():
         if self.aug == True:
             auged = augmentation(grey_img)
             ndimg = Image.fromarray(auged).convert('RGBA')
-            # 画图看一下
-            # plt.figure(1)
-            # plt.imshow(auged)
-            # plt.show()
-
+        # 画图看一下
+        # ndimg.show()
         save_path = os.path.join(cfg.OUTPUT_DIR, '{}.png'.format(i))  # 类别序列即文件名
         ndimg.save(save_path)
 
