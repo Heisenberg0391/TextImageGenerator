@@ -107,18 +107,9 @@ class TextGenerator():
         root = tk.Tk()
         root.withdraw()
         self.font_path = filedialog.askopenfilename()
-        self.load_fonts(self.font_factor, self.font_path)
         # 加载语料集
         self.build_dict()
         self.build_train_list(cfg.n_samples, cfg.sentence_lim)
-
-    def load_fonts(self, factor, font_path):
-        """ 加载字体文件并设定字体大小
-        """
-        self.fonts = []
-        # 加载字体文件
-        font = ImageFont.truetype(font_path, int(self.img_h*factor), 0)
-        self.fonts.append(font)
 
     def build_dict(self):
         """ 打开字典，加载全部字符到list
@@ -181,9 +172,10 @@ class TextGenerator():
 
     def paint_text(self, text, i):
         """ 使用PIL绘制文本图像，传入画布尺寸，返回文本图像
-        :param h: 画布高度
-        :param w: 画布宽度
+        :param: text 当前行文本
+        :param: i 当前文本在训练集中的序号
         """
+        factor = 1  # 初始字体大小
         # 创建画布
         canvas = np.zeros(shape=(self.img_h, self.img_w), dtype=np.uint8)
         canvas[0:] = 255
@@ -191,15 +183,14 @@ class TextGenerator():
         ndimg = Image.fromarray(canvas).convert('RGBA')
         draw = ImageDraw.Draw(ndimg)
 
-        font = self.fonts[-1]
+        font = ImageFont.truetype(self.font_path, int(img_h * factor), 0)  # 加载字体
         text_size = font.getsize(text)  # 获取当前字体下的文本区域大小
 
         # 自动调整字体大小避免超出边界, 至少留白水平20%
-        margin = [self.img_w - int(0.2*self.img_w), self.img_h - int(0.2*self.img_h)]
+        margin = [self.img_w - int(0.2 * self.img_w), self.img_h - int(0.2 * self.img_h)]
         while (text_size[0] > margin[0]) or (text_size[1] > margin[1]):
-            self.font_factor -= 0.1
-            self.load_fonts(self.font_factor, self.font_path)
-            font = self.fonts[-1]
+            factor -= 0.01  # 控制字体大小
+            font = ImageFont.truetype(self.font_path, int(img_h * factor), 0)  # 加载字体
             text_size = font.getsize(text)
 
         # 随机平移
@@ -245,5 +236,5 @@ if __name__ == '__main__':
     img_w = 300
     img_h = 40
     # 实例化图像生成器
-    img_gen = TextGenerator(img_w=img_w, img_h=img_h, aug=False)  # aug参数控制是否使用数据增强
+    img_gen = TextGenerator(img_w=img_w, img_h=img_h, aug=True)  # aug参数控制是否使用数据增强
     img_gen.text_generator()
