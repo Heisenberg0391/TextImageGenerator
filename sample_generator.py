@@ -33,8 +33,8 @@ def augmentation(img, ):
 
     # 模糊后二值化，虚化边缘
     if mode == 1:
-        image = cv2.GaussianBlur(image, (9, 9), np.random.randint(1, 8))
-        ret, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        image = cv2.GaussianBlur(image, (3, 3), np.random.randint(1, 9))
+        ret, th = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         thresh = image.copy()
         thresh[thresh >= th] = 0
         thresh[thresh < th] = 255
