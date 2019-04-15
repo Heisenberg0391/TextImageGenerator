@@ -10,9 +10,14 @@ FONT_PATH = 'fonts/'
 # 输出路径
 OUTPUT_DIR = 'imageset/'
 
-# 样本总数
-n_samples = 5
-# 每行最大长度
-sentence_lim = 10
-# 画布能容纳的最大序列长度，对应img_w
-canvas_lim = 50
+# coding=utf-8
+import os
+# 路径参数
+config_path = 'path to TextImageGenerator\config'
+corpus = os.path.join(config_path, 'sentences.txt')  # 语料集
+dict = os.path.join(config_path, 'dict5990.txt')
+FONT_PATH = 'fonts'  # 字体文件路径
+n_samples = 10
+max_row_len = 10
+max_label_len = 33
+

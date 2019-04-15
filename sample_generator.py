@@ -7,7 +7,7 @@
 """
 import codecs
 import numpy as np
-import mycrnn_pc.config.cfg as cfg
+import TextImageGenerator.config.cfg as cfg
 import os
 from PIL import Image, ImageDraw, ImageFont
 import progressbar
@@ -273,7 +273,7 @@ class TextGenerator():
 
 if __name__ == '__main__':
     np.random.seed(0)  # 决定训练集的打乱情况
-    DATASET_DIR = 'imageset1'
+    DATASET_DIR = cfg.OUTPUT_DIR
     # 输出路径
     if not os.path.exists(DATASET_DIR):
         os.makedirs(DATASET_DIR)
