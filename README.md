@@ -2,7 +2,7 @@
 该脚本根据语料文件生成对应的图像文件，适用于文本识别等CV任务
 >
 根目录下的fonts文件夹用于存放字体文件, imageset文件夹用于存放输出图像和映射表, 
-config中设置相关参数并存放语料文件, dict5990.txt是字典, sentences.txt是语料集
+config/cfg.py中设置相关参数并存放语料文件:(1)dict5990.txt是字典(2)sentences.txt是语料集
 >
 运行sample_generator.py即可生成数据集
 >
