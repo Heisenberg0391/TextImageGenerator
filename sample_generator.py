@@ -22,7 +22,7 @@ def rotate_bound(image, angle, bg_color):
     # grab the dimensions of the image and then determine the
     # center
     (h, w) = image.shape[:2]
-    (cX, cY) = (w // 2, h // 2)
+    (cX, cY) = (w // 2, h // 2)  # 找到旋转中心
 
     # grab the rotation matrix (applying the negative of the
     # angle to rotate clockwise), then grab the sine and cosine
@@ -43,11 +43,6 @@ def rotate_bound(image, angle, bg_color):
     return cv2.warpAffine(image, M, (nW, nH),
                           borderMode=cv2.BORDER_CONSTANT,
                           borderValue=bg_color)
-
-def distort(input_img):
-    h, w, d = input_img.shape
-    rotated = cv2.getRotationMatrix2D((w / 2, h / 2), 15, 1)
-    return rotated
 
 
 class TextGenerator():
@@ -165,44 +160,53 @@ class TextGenerator():
         self.train_list = sentence_list  # 过滤后的训练集
         self.mapping_list(self.save_path)  # 保存图片名和类别序列的 map list
 
-    def paint_text(self, text, i):
+    def paint_text(self, text, i, color=False):
         """ 使用PIL绘制文本图像，传入画布尺寸，返回文本图像
         :param h: 画布高度
         :param w: 画布宽度
         :return: img
         """
-        # 创建画布背景
-        bg_b = np.random.randint(0, 255)  # 背景色
-        bg_g = np.random.randint(0, 255)
-        bg_r = np.random.randint(0, 255)
-        # 前景色
-        fg_b = np.random.randint(0, 255)  # 背景色
-        fg_g = np.random.randint(0, 255)
-        fg_r = np.random.randint(0, 255)
-        # 计算前景和背景的彩色相似度
-        bg_color = sRGBColor(bg_b, bg_g, bg_r)
-        bg_color = convert_color(bg_color, CMYKColor)  # 转cmyk
-        bg_color = convert_color(bg_color, LabColor)
-        fg_color = sRGBColor(fg_b, fg_g, fg_r)
-        fg_color = convert_color(fg_color, CMYKColor)  # 转cmyk
-        fg_color = convert_color(fg_color, LabColor)
-        delta_e = delta_e_cie2000(bg_color, fg_color)
-        while delta_e < 150 and delta_e > 250:  # 150-250
-            # 创建画布背景色
-            bg_b = np.random.randint(0, 255)
+        if color == True:
+            # 创建画布背景
+            bg_b = np.random.randint(0, 255)  # 背景色
             bg_g = np.random.randint(0, 255)
             bg_r = np.random.randint(0, 255)
-            # 文字前景色
-            fg_b = np.random.randint(0, 255)
+            # 前景色
+            fg_b = np.random.randint(0, 255)  # 背景色
             fg_g = np.random.randint(0, 255)
             fg_r = np.random.randint(0, 255)
-            # 计算前景和背景的彩色相似度
+            # 计算前景和背景的彩色相似度+3
             bg_color = sRGBColor(bg_b, bg_g, bg_r)
+            bg_color = convert_color(bg_color, CMYKColor)  # 转cmyk
             bg_color = convert_color(bg_color, LabColor)
             fg_color = sRGBColor(fg_b, fg_g, fg_r)
+            fg_color = convert_color(fg_color, CMYKColor)  # 转cmyk
             fg_color = convert_color(fg_color, LabColor)
             delta_e = delta_e_cie2000(bg_color, fg_color)
-
+            while delta_e < 150 and delta_e > 250:  # 150-250
+                # 创建画布背景色
+                bg_b = np.random.randint(0, 255)
+                bg_g = np.random.randint(0, 255)
+                bg_r = np.random.randint(0, 255)
+                # 文字前景色
+                fg_b = np.random.randint(0, 255)
+                fg_g = np.random.randint(0, 255)
+                fg_r = np.random.randint(0, 255)
+                # 计算前景和背景的彩色相似度
+                bg_color = sRGBColor(bg_b, bg_g, bg_r)
+                bg_color = convert_color(bg_color, LabColor)
+                fg_color = sRGBColor(fg_b, fg_g, fg_r)
+                fg_color = convert_color(fg_color, LabColor)
+                delta_e = delta_e_cie2000(bg_color, fg_color)
+        else:
+            # 创建画布背景
+            bg_b = np.random.randint(200, 255)  # 背景色
+            bg_g = bg_b
+            bg_r = bg_b
+            # 前景色
+            fg_b = np.random.randint(0, 128)  # 前景色
+            fg_g = fg_b
+            fg_r = fg_b
         # 随机选择字体
         np.random.shuffle(self.font_name)
         cur_fonts = self.fonts.get(self.font_name[0])
@@ -249,15 +253,19 @@ class TextGenerator():
         angle = np.random.randint(-8, 8)
         rotated = rotate_bound(img_array, angle=angle, bg_color=(bg_b, bg_g, bg_r))
         canvas = Image.fromarray(rotated)
-        img_array = np.array(canvas.convert('CMYK'))[:,:,0:3]  # rgb to cmyk
-        img_array = cv2.resize(img_array.copy(), (128, 32), interpolation=cv2.INTER_CUBIC)  # resize
-
-        ndimg = Image.fromarray(img_array).convert('CMYK')
+        if color:
+            img_array = np.array(canvas.convert('CMYK'))[:,:,0:3]  # rgb to cmyk
+            img_array = cv2.resize(img_array.copy(), (128, 32), interpolation=cv2.INTER_CUBIC)  # resize
+            ndimg = Image.fromarray(img_array).convert('CMYK')
+        else:
+            img_array = np.array(canvas.convert('L'))  # rgb to cmyk
+            img_array = cv2.resize(img_array.copy(), (128, 32), interpolation=cv2.INTER_CUBIC)  # resize
+            ndimg = Image.fromarray(img_array)
         # 保存
         save_path = os.path.join(self.save_path, '{}.jpeg'.format(i))  # 类别序列即文件名
         ndimg.save(save_path)
 
-    def generator(self):
+    def generator(self, color):
         n_samples = len(self.train_list)
         # 进度条
         widgets = ["数据集创建中: ", progressbar.Percentage(), " ", progressbar.Bar(), " ", progressbar.ETA()]
@@ -265,7 +273,7 @@ class TextGenerator():
 
         for i in range(n_samples):
             # 绘制当前文本
-            self.paint_text(self.train_list[i], i)
+            self.paint_text(self.train_list[i], i, color)
             pbar.update(i)
 
         pbar.finish()
@@ -283,4 +291,4 @@ if __name__ == '__main__':
     if not os.path.exists(DATASET_DIR):
         os.makedirs(DATASET_DIR)
     img_gen = TextGenerator(save_path=DATASET_DIR)
-    img_gen.generator()
+    img_gen.generator(color = False)  # color=True时创建CMYK彩色图像
