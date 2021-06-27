@@ -6,7 +6,7 @@ config/cfg.py中设置相关参数并存放语料文件:>
 (1)dict.txt是字典，字典文件应保证每行一个字符。(2)sentences.txt是语料集
 
 >
-运行sample_generator.py即可生成数据集
+脚本运行：python sample_generator.py
 >
 ![效果图1](/imageset/0.jpeg)
 >
