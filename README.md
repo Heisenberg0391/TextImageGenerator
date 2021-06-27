@@ -6,6 +6,7 @@ config/cfg.py中设置相关参数并存放语料文件:
 >(1)dict.txt是字典，字典文件应保证每行一个字符
 >(2)sentences.txt是语料集
 >(3)OUTPUT_DIR是文本图片和映射文件的输出路径
+>(4)n_samples用于控制输出的图片总数
 
 >
 脚本运行：python sample_generator.py
