@@ -6,57 +6,65 @@
 参数：在config.cfg.py中: config_path, corpus, dict, FONT_PATH
 """
 import codecs
-import numpy as np
-import TextImageGenerator.config.cfg as cfg
-import os
-from PIL import Image, ImageDraw, ImageFont
-import progressbar
+import config.cfg as cfg
+from PIL import ImageFont
 import glob
+from threading import Thread
+from multiprocessing import Pool
+from queue import Queue
 import cv2
 from colormath.color_objects import CMYKColor,sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
+from PIL import Image, ImageDraw
+import progressbar
+import numpy as np
+import os
 
 
-def rotate_bound(image, angle, bg_color):
-    # grab the dimensions of the image and then determine the
-    # center
-    (h, w) = image.shape[:2]
-    (cX, cY) = (w // 2, h // 2)  # 找到旋转中心
+class Worker(Thread):
+    """Thread executing tasks from a given tasks queue"""
+    def __init__(self, tasks, save_path):
+        Thread.__init__(self)
+        self.save_path = save_path
+        self.tasks = tasks
+        self.daemon = True
+        self.start()
 
-    # grab the rotation matrix (applying the negative of the
-    # angle to rotate clockwise), then grab the sine and cosine
-    # (i.e., the rotation components of the matrix)
-    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
-    cos = np.abs(M[0, 0])
-    sin = np.abs(M[0, 1])
-
-    # compute the new bounding dimensions of the image
-    nW = int((h * sin) + (w * cos))
-    nH = int((h * cos) + (w * sin))
-
-    # adjust the rotation matrix to take into account translation
-    M[0, 2] += (nW / 2) - cX
-    M[1, 2] += (nH / 2) - cY
-
-    # perform the actual rotation and return the image
-    return cv2.warpAffine(image, M, (nW, nH),
-                          borderMode=cv2.BORDER_CONSTANT,
-                          borderValue=bg_color)
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            func(*args, **kargs)
+            self.tasks.task_done()
 
 
-class TextGenerator():
+
+class ThreadPool:
+    """Pool of threads consuming tasks from a queue"""
+    def __init__(self, num_threads, save_path):
+        self.tasks = Queue(num_threads)
+        for _ in range(num_threads): Worker(self.tasks, save_path)
+
+    def add_task(self, func, *args, **kargs):
+        """Add a task to the queue"""
+        self.tasks.put((func, args, kargs))
+
+    def wait_completion(self):
+        """Wait for completion of all the tasks in the queue"""
+        self.tasks.join()
+
+class TextGenerator:
     def __init__(self, save_path):
         """初始化参数来自config文件
         """
         # 语料参数
+        self.save_path = save_path
         self.max_row_len = cfg.max_row_len
         self.max_label_len = cfg.max_label_len  # CTC最大输入长度
         self.n_samples = cfg.n_samples
         self.dictfile = cfg.dict  # 字典
         self.dict = []
         self.corpus_file = cfg.corpus  # 语料集
-        self.save_path = save_path
         # 加载字体文件
         self.font_factor = 1  # 控制字体大小
         # 加载字体文件
@@ -160,10 +168,37 @@ class TextGenerator():
         self.train_list = sentence_list  # 过滤后的训练集
         self.mapping_list(self.save_path)  # 保存图片名和类别序列的 map list
 
-    def paint_text(self, text, i, color=False):
+    def rotate_bound(self, image, angle, bg_color):
+        # grab the dimensions of the image and then determine the
+        # center
+        (h, w) = image.shape[:2]
+        (cX, cY) = (w // 2, h // 2)  # 找到旋转中心
+
+        # grab the rotation matrix (applying the negative of the
+        # angle to rotate clockwise), then grab the sine and cosine
+        # (i.e., the rotation components of the matrix)
+        M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+        cos = np.abs(M[0, 0])
+        sin = np.abs(M[0, 1])
+
+        # compute the new bounding dimensions of the image
+        nW = int((h * sin) + (w * cos))
+        nH = int((h * cos) + (w * sin))
+
+        # adjust the rotation matrix to take into account translation
+        M[0, 2] += (nW / 2) - cX
+        M[1, 2] += (nH / 2) - cY
+
+        # perform the actual rotation and return the image
+        return cv2.warpAffine(image, M, (nW, nH),
+                              borderMode=cv2.BORDER_CONSTANT,
+                              borderValue=bg_color)
+
+    def paint_text(self, text, i, color, font):
         """ 使用PIL绘制文本图像，传入画布尺寸，返回文本图像
         :param h: 画布高度
         :param w: 画布宽度
+        # color=True时创建CMYK彩色图像
         :return: img
         """
         if color == True:
@@ -207,12 +242,7 @@ class TextGenerator():
             fg_b = np.random.randint(0, 128)  # 前景色
             fg_g = fg_b
             fg_r = fg_b
-        # 随机选择字体
-        np.random.shuffle(self.font_name)
-        cur_fonts = self.fonts.get(self.font_name[0])
-        keys = list(cur_fonts.keys())
-        np.random.shuffle(keys)
-        font = cur_fonts.get(keys[0])
+
         text_size = font.getsize(text)
 
         # 根据字体大小创建画布
@@ -228,8 +258,8 @@ class TextGenerator():
         draw = ImageDraw.Draw(canvas)
 
         # 随机平移
-        start_x = np.random.randint(2, w_space-2)
-        start_y = np.random.randint(2, h_space-2)
+        start_x = np.random.randint(2, w_space - 2)
+        start_y = np.random.randint(2, h_space - 2)
 
         # 绘制当前文本行
         draw.text((start_x, start_y), text, font=font, fill=(fg_b, fg_g, fg_r))
@@ -246,15 +276,15 @@ class TextGenerator():
                           [start_x + np.random.randint(0, 10), start_y + h - np.random.randint(0, 5)]])
         M = cv2.getPerspectiveTransform(src, dst)
         img_array = cv2.warpPerspective(img_array.copy(), M, (w, h),
-                                  borderMode=cv2.BORDER_CONSTANT,
-                                  borderValue=(bg_b, bg_g, bg_r))
+                                        borderMode=cv2.BORDER_CONSTANT,
+                                        borderValue=(bg_b, bg_g, bg_r))
         # Image.fromarray(img_array).show()
         # 随机旋转
         angle = np.random.randint(-8, 8)
-        rotated = rotate_bound(img_array, angle=angle, bg_color=(bg_b, bg_g, bg_r))
+        rotated = self.rotate_bound(img_array, angle=angle, bg_color=(bg_b, bg_g, bg_r))
         canvas = Image.fromarray(rotated)
         if color:
-            img_array = np.array(canvas.convert('CMYK'))[:,:,0:3]  # rgb to cmyk
+            img_array = np.array(canvas.convert('CMYK'))[:, :, 0:3]  # rgb to cmyk
             img_array = cv2.resize(img_array.copy(), (128, 32), interpolation=cv2.INTER_CUBIC)  # resize
             ndimg = Image.fromarray(img_array).convert('CMYK')
         else:
@@ -265,15 +295,20 @@ class TextGenerator():
         save_path = os.path.join(self.save_path, '{}.jpeg'.format(i))  # 类别序列即文件名
         ndimg.save(save_path)
 
-    def generator(self, color):
+    def generate(self, color):
         n_samples = len(self.train_list)
         # 进度条
         widgets = ["数据集创建中: ", progressbar.Percentage(), " ", progressbar.Bar(), " ", progressbar.ETA()]
         pbar = progressbar.ProgressBar(maxval=n_samples, widgets=widgets).start()
-
         for i in range(n_samples):
+            # 随机选择字体
+            np.random.shuffle(self.font_name)
+            cur_fonts = self.fonts.get(self.font_name[0])
+            keys = list(cur_fonts.keys())
+            np.random.shuffle(keys)
+            font = cur_fonts.get(keys[0])
             # 绘制当前文本
-            self.paint_text(self.train_list[i], i, color)
+            pool.add_task(self.paint_text, self.train_list[i], i, color,  font)
             pbar.update(i)
 
         pbar.finish()
@@ -285,10 +320,12 @@ if __name__ == '__main__':
     # 输出路径
     if not os.path.exists(DATASET_DIR):
         os.makedirs(DATASET_DIR)
-    psnr = []
-    ssim = []
     # 实例化图像生成器
     if not os.path.exists(DATASET_DIR):
         os.makedirs(DATASET_DIR)
-    img_gen = TextGenerator(save_path=DATASET_DIR)
-    img_gen.generator(color = False)  # color=True时创建CMYK彩色图像
+
+    mode_cmyk = True
+    pool_size = 10
+    txt_gen = TextGenerator(save_path=DATASET_DIR)
+    pool = ThreadPool(pool_size, save_path=DATASET_DIR)
+    txt_gen.generate(mode_cmyk)

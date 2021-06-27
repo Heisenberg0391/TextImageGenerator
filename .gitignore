@@ -2,3 +2,4 @@ __pycache__/
 to_lmdb/lmdb/
 .idea/
 *.txt
+outputs/
