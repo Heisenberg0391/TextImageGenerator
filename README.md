@@ -2,11 +2,11 @@
 该脚本根据语料文件生成对应的图像文件，适用于文本识别等计算机视觉任务。A sentence to image generator for OCR.
 >new feature: 支持多线程，大幅提升脚本速度, multi-threading supported.
 >
-根目录下的fonts文件夹用于存放字体文件
+根目录下的fonts文件夹用于存放字体文件, font files should be put under /fonts directory.
 >
-imageset文件夹用于存放输出图像和映射表
+imageset文件夹用于存放输出图像和映射表,  images and mapping file will output into /imageset directory. 
 >
-config/cfg.py中设置相关参数并存放语料文件: font files should be put under /fonts directory. images and mapping file will output into /imageset directory. 
+config/cfg.py中设置相关参数并存放语料文件, configure parameters and file paths here
 >
 (1)dict.txt是字典，字典文件应保证每行一个字符, this is dictionary, keep one charactor per line and no space at the beginning or the end of the line.
 >
