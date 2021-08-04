@@ -14,7 +14,7 @@ config/cfg.py中设置相关参数并存放语料文件, configure parameters an
 >
 (3)OUTPUT_DIR是文本图片和映射文件的输出路径, this should be the output path of images and mapping file.
 >
-(4)n_samples用于控制输出的图片总数, 注意脚本会将原始语料中的每一行进行随机切割与换行，因此最大输出图片数量不会超过处理后的语料行数。 this parameter controls the total images generated. Notice that sentences in corpus will be splitted into multiple lines randomly, so the max images generator will no more than the amount of lines of the splitted corpus.
+(4)n_samples用于控制输出的图片总数, 注意脚本会将原始语料中的每一行进行随机切割与换行，因此最大输出图片数量不会超过处理后的语料行数。 this parameter controls the total images generated. Notice that sentences in corpus will be splitted into multiple lines randomly, so the max images generated will no more than the amount of lines of the splitted corpus.
 
 >
 脚本运行：python sample_generator.py
